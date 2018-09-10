@@ -79,32 +79,39 @@ function translatePoint(pt, dist, heading) {
 }
 
 var PolylineOffset = {
-    offsetPointLine: function(points, distance) {
+    offsetPointLine: function (points, distance) {
         var offsetSegments = [];
+        var xs, ys, dist;
 
-        forEachPair(points, L.bind(function(a, b) {
+        forEachPair(points, L.bind(function (a, b) {
             if (a.x === b.x && a.y === b.y) { return; }
+
+            xs = b.x - a.x;
+            ys = b.y - a.y;
+            dist = Math.sqrt(xs * xs + ys * ys);
 
             // angles in (-PI, PI]
             var segmentAngle = Math.atan2(a.y - b.y, a.x - b.x);
-            var offsetAngle = segmentAngle - Math.PI/2;
+            var offsetAngle = segmentAngle - Math.PI / 2;
 
-            offsetSegments.push({
-                offsetAngle: offsetAngle,
-                original: [a, b],
-                offset: [
-                    translatePoint(a, distance, offsetAngle),
-                    translatePoint(b, distance, offsetAngle)
-                ]
-            });
+            if (dist > 2) {
+                offsetSegments.push({
+                    offsetAngle: offsetAngle,
+                    original: [a, b],
+                    offset: [
+                        translatePoint(a, distance, offsetAngle),
+                        translatePoint(b, distance, offsetAngle)
+                    ]
+                });
+            }
         }, this));
 
         return offsetSegments;
     },
 
-    offsetPoints: function(pts, offset) {
-        var offsetSegments = this.offsetPointLine(pts, offset);
-        return this.joinLineSegments(offsetSegments, offset);
+    offsetPoints: function(pts, options) {
+        var offsetSegments = this.offsetPointLine(L.LineUtil.simplify(pts, options.offsetSmoothFactor), options.offset);
+        return this.joinLineSegments(offsetSegments, options.offset);
     },
 
     /**
@@ -199,7 +206,7 @@ L.Polyline.include({
 
             // Offset management hack ---
             if (this.options.offset) {
-                ring = L.PolylineOffset.offsetPoints(ring, this.options.offset);
+                ring = L.PolylineOffset.offsetPoints(ring, this.options);
             }
             // Offset management hack END ---
 
